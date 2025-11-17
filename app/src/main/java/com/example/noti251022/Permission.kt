@@ -13,14 +13,4 @@ object PermissionHelper {
         context.startActivity(intent)
     }
 
-    fun requestSMSPermission(activity: Activity) {
-        if (ContextCompat.checkSelfPermission(activity, Manifest.permission.RECEIVE_SMS) !=
-            android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(
-                activity,
-                arrayOf(Manifest.permission.RECEIVE_SMS),
-                1001
-            )
-        }
-    }
 }

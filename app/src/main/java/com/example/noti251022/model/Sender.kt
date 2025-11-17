@@ -1,4 +1,4 @@
-package com.example.noti251022.sender
+package com.example.noti251022.model
 
 data class Sender(
     val name: String,

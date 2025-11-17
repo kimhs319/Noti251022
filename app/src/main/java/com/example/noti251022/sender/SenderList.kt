@@ -1,6 +1,7 @@
 package com.example.noti251022.sender
 
 import android.content.Context
+import com.example.noti251022.model.Sender  // model 패키지에서 가져옴
 import com.example.noti251022.util.KeyStoreUtils
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -10,10 +11,9 @@ object SenderList {
 
     private val senders = mutableListOf<Sender>()
 
-    // JSON에서 센더 이름 목록 로드
+    /** 센더 이름 목록을 JSON 파일에서 로드 */
     fun loadSenderNames(context: Context) {
         senders.clear()
-
         val inputStream = context.resources.openRawResource(
             context.resources.getIdentifier("senders", "raw", context.packageName)
         )
@@ -22,7 +22,6 @@ object SenderList {
 
         val jsonObject = JSONObject(jsonString)
         val sendersArray = jsonObject.getJSONArray("senders")
-
         for (i in 0 until sendersArray.length()) {
             val senderObj = sendersArray.getJSONObject(i)
             val name = senderObj.getString("name")
@@ -30,7 +29,7 @@ object SenderList {
         }
     }
 
-    // KeyStore에서 각 센더의 token과 chatId 로드
+    /** KeyStore에서 센더의 토큰/챗아이디 불러와서 메모리 정보 세팅 */
     fun loadSenderCredentials(context: Context) {
         senders.forEach { sender ->
             sender.token = KeyStoreUtils.loadValue(context, "sender_${sender.name}_token")
@@ -38,31 +37,27 @@ object SenderList {
         }
     }
 
-    // 특정 센더의 token과 chatId 저장
+    /** 센더 정보 안전 저장 + 메모리 정보 동기화 */
     fun saveSenderCredentials(context: Context, senderName: String, token: String, chatId: String) {
         KeyStoreUtils.storeValue(context, "sender_${senderName}_token", token)
         KeyStoreUtils.storeValue(context, "sender_${senderName}_chatid", chatId)
-
-        // 메모리 상의 센더 정보도 업데이트
         senders.find { it.name == senderName }?.apply {
             this.token = token
             this.chatId = chatId
         }
     }
 
-    // 모든 센더 목록 반환
+    /** 모든 센더 반환 (불변 리스트로) */
     fun getAllSenders(): List<Sender> = senders.toList()
 
-    // 특정 이름의 센더 반환
+    /** 특정 센더 객체 반환 */
     fun getSender(name: String): Sender? = senders.find { it.name == name }
 
-    // 모든 센더가 설정되었는지 확인
-    fun isAllSendersConfigured(): Boolean {
-        return senders.all { !it.token.isNullOrEmpty() && !it.chatId.isNullOrEmpty() }
-    }
+    /** 센더 토큰/챗아이디 모두 설정되어 있으면 true */
+    fun isAllSendersConfigured(): Boolean =
+        senders.all { !it.token.isNullOrEmpty() && !it.chatId.isNullOrEmpty() }
 
-    // 설정되지 않은 센더 목록 반환
-    fun getUnconfiguredSenders(): List<Sender> {
-        return senders.filter { it.token.isNullOrEmpty() || it.chatId.isNullOrEmpty() }
-    }
+    /** 아직 미설정 센더 리스트 반환 */
+    fun getUnconfiguredSenders(): List<Sender> =
+        senders.filter { it.token.isNullOrEmpty() || it.chatId.isNullOrEmpty() }
 }

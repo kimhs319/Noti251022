@@ -29,7 +29,6 @@ class MainActivity : AppCompatActivity() {
         // 권한 요청 버튼
         permissionButton.setOnClickListener {
             PermissionHelper.requestNotificationListener(this)
-            PermissionHelper.requestSMSPermission(this)
         }
 
         // 센더별 입력 필드 동적 생성
@@ -93,18 +92,6 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "모든 센더 정보 저장 완료!", Toast.LENGTH_SHORT).show()
         } else {
             Toast.makeText(this, "일부 센더 정보가 누락되었습니다.", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1001) {
-            if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "SMS 권한 승인됨", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, "SMS 권한 거부됨", Toast.LENGTH_SHORT).show()
-            }
         }
     }
 }
