@@ -4,13 +4,16 @@ import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.example.noti251022.sender.SenderList
+import com.example.noti251022.util.AppLogger
 import com.example.noti251022.util.KeyStoreUtils
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), AppLogger.LogListener {
 
     private lateinit var permissionButton: Button
     private lateinit var senderContainer: LinearLayout
     private lateinit var saveButton: Button
+    private lateinit var logTextView: TextView
+    private lateinit var clearLogButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -19,6 +22,14 @@ class MainActivity : AppCompatActivity() {
         permissionButton = findViewById(R.id.permissionButton)
         senderContainer = findViewById(R.id.senderContainer)
         saveButton = findViewById(R.id.saveButton)
+        logTextView = findViewById(R.id.logTextView)
+        clearLogButton = findViewById(R.id.clearLogButton)
+
+        // 로그 리스너 등록
+        AppLogger.registerListener(this)
+        
+        // 기존 로그 표시
+        displayLogs()
 
         // JSON에서 센더 이름 목록 로드
         SenderList.loadSenderNames(this)
@@ -37,6 +48,42 @@ class MainActivity : AppCompatActivity() {
         // 저장 버튼
         saveButton.setOnClickListener {
             saveSenderCredentials()
+        }
+        
+        // 로그 삭제 버튼
+        clearLogButton.setOnClickListener {
+            AppLogger.clearLogs()
+            logTextView.text = "로그가 여기에 표시됩니다..."
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        AppLogger.unregisterListener(this)
+    }
+
+    override fun onNewLog(entry: AppLogger.LogEntry) {
+        // UI 스레드에서 실행
+        runOnUiThread {
+            val logLine = "[${entry.timestamp}] ${entry.level}: ${entry.message}\n"
+            logTextView.append(logLine)
+            
+            // 자동 스크롤
+            val scrollView = findViewById<ScrollView>(R.id.mainScrollView)
+            scrollView?.post {
+                scrollView.fullScroll(ScrollView.FOCUS_DOWN)
+            }
+        }
+    }
+    
+    private fun displayLogs() {
+        val logs = AppLogger.getAllLogs()
+        if (logs.isEmpty()) {
+            logTextView.text = "로그가 여기에 표시됩니다..."
+        } else {
+            logTextView.text = logs.joinToString("\n") { 
+                "[${it.timestamp}] ${it.level}: ${it.message}" 
+            }
         }
     }
 

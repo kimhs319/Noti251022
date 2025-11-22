@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/mainScrollView"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="24dp">
@@ -50,6 +51,50 @@
             android:text="저장"
             android:layout_marginTop="24dp"
             android:layout_marginBottom="24dp" />
+
+        <!-- 구분선 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#CCCCCC"
+            android:layout_marginBottom="24dp" />
+
+        <!-- 로그 섹션 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+            
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="앱 로그"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+            
+            <Button
+                android:id="@+id/clearLogButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="로그 지우기"
+                style="?android:attr/buttonBarButtonStyle" />
+        </LinearLayout>
+
+        <!-- 로그 표시 영역 -->
+        <TextView
+            android:id="@+id/logTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="200dp"
+            android:background="#F5F5F5"
+            android:padding="12dp"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:textColor="#333333"
+            android:scrollbars="vertical"
+            android:text="로그가 여기에 표시됩니다..." />
 
     </LinearLayout>
 
