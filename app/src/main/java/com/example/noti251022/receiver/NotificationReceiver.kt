@@ -5,8 +5,23 @@ import android.service.notification.StatusBarNotification
 import android.app.Notification
 import com.example.noti251022.model.MessageData
 import com.example.noti251022.processor.MessageProcessor
+import com.example.noti251022.sender.SenderList
 
 class NotificationReceiver : NotificationListenerService() {
+
+    override fun onCreate() {
+        super.onCreate()
+        initializeSenders()
+    }
+
+    private fun initializeSenders() {
+        try {
+            SenderList.loadSenderNames(this)
+            SenderList.loadSenderCredentials(this)
+        } catch (e: Exception) {
+            android.util.Log.e("NotificationReceiver", "센더 정보 로드 실패", e)
+        }
+    }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         if (sbn == null) return
@@ -23,6 +38,7 @@ class NotificationReceiver : NotificationListenerService() {
             title = title,
             text = text
         )
-        MessageProcessor.handleNotification(msg)
+        
+        MessageProcessor.handleNotification(this, msg)
     }
 }
