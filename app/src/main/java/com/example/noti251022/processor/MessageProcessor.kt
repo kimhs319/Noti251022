@@ -1,40 +1,44 @@
 package com.example.noti251022.processor
 
+import android.content.Context
 import com.example.noti251022.model.MessageData
 import com.example.noti251022.sender.SenderList
 import com.example.noti251022.sender.TelegramSender
-import android.util.Log
+import com.example.noti251022.util.AppLogger
 
 object MessageProcessor {
-    fun handleNotification(msg: MessageData) {
-        Log.d("MessageProcessor", "수신 메시지: $msg")
+    fun handleNotification(context: Context, msg: MessageData) {
+        AppLogger.log("[수신] ${msg.source}: ${msg.title}")
 
         val rule = Rules.rulesMap[msg.source]
-
         if (rule == null) {
-            Log.d("MessageProcessor", "적합한 룰이 없어 무시함: ${msg.source}")
+            AppLogger.log("[무시] 룰 없음: ${msg.source}")
             return
         }
 
         if (!rule.condition(msg.title, msg.text)) {
-            Log.d("MessageProcessor", "룰 조건에 부합하지 않음: ${msg.source}")
+            AppLogger.log("[무시] 조건 불만족: ${msg.source}")
             return
         }
 
         val messageToSend = rule.buildMessage(msg.title, msg.text)
         if (messageToSend.isNullOrEmpty()) {
-            Log.d("MessageProcessor", "메시지 빌드 실패 또는 null: ${msg.source}")
+            AppLogger.log("[무시] 메시지 빌드 실패: ${msg.source}")
             return
         }
 
         val sender = SenderList.getSender(rule.sender)
         if (sender == null) {
-            Log.d("MessageProcessor", "설정된 센더를 찾을 수 없음: ${rule.sender}")
+            AppLogger.error("[에러] 센더 없음: ${rule.sender}")
             return
         }
 
-        TelegramSender.sendTelegram(sender, messageToSend)
+        if (sender.token.isNullOrEmpty() || sender.chatId.isNullOrEmpty()) {
+            AppLogger.error("[에러] 센더 정보 불완전: ${sender.name}")
+            return
+        }
 
-        Log.d("MessageProcessor", "텔레그램 메시지 전송 완료: 센더=${sender.name}, 메시지=$messageToSend")
+        TelegramSender.sendTelegram(context, sender, messageToSend)
+        AppLogger.log("[전송] ${sender.name}")
     }
 }
