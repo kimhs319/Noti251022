@@ -34,7 +34,7 @@ object Rules {
                     }
                 }
                 
-                "##[네이버] $status $name $dateTime"
+                "[네이버] $status $name $dateTime"
             }
         ),
 
@@ -44,7 +44,7 @@ object Rules {
             condition = { title, _ -> title.startsWith("마곡경희한의원 - ") },
             sender = "MGKH",
             buildMessage = buildMessage@{ title, text ->
-                "##[카톡] ${title.removePrefix("마곡경희한의원 - ")}\n$text"
+                "[카톡] ${title.removePrefix("마곡경희한의원 - ")}\n$text"
             }
         ),
 
@@ -57,7 +57,7 @@ object Rules {
             },
             sender = "MGKH",
             buildMessage = buildMessage@{ title, text ->
-                "##[네이버톡톡] ${title.removePrefix("[마곡경희한의원 발산역점] ")}\n$text"
+                "[네이버톡톡] ${title.removePrefix("[마곡경희한의원 발산역점] ")}\n$text"
             }
         ),
 
@@ -66,7 +66,7 @@ object Rules {
             source = "com.dho.mobilefax",
             condition = { _, _ -> true },
             sender = "MGKH",
-            buildMessage = buildMessage@{ _, text -> "##[팩스] $text" }
+            buildMessage = buildMessage@{ _, text -> "[팩스] $text" }
         ),
 
         // 드롭박스 업로드 완료
@@ -74,7 +74,7 @@ object Rules {
             source = "com.dropbox.android",
             condition = { title, _ -> title.contains("업로드 완료") },
             sender = "MGKH",
-            buildMessage = buildMessage@{ _, _ -> "##[팩스] 저장 완료" }
+            buildMessage = buildMessage@{ _, _ -> "[팩스] 저장 완료" }
         ),
 
         // Gmail - 서류 발급 요청
@@ -82,7 +82,7 @@ object Rules {
             source = "com.google.android.gm",
             condition = { _, text -> text.contains("Contact form submitted") },
             sender = "MGKH",
-            buildMessage = buildMessage@{ _, _ -> "##[서류 발급 요청]" }
+            buildMessage = buildMessage@{ _, _ -> "[서류 발급 요청]" }
         ),
 
         // 제로페이
@@ -96,7 +96,7 @@ object Rules {
                     AppLogger.log("[제로페이] 금액 파싱 실패")
                     return@buildMessage null
                 }
-                "##[제로페이] ${paymentMatch.value}"
+                "[제로페이] ${paymentMatch.value}"
             }
         ),
 
@@ -105,7 +105,7 @@ object Rules {
             source = "com.nhn.android.search",
             condition = { title, _ -> title.contains("네이버 회원정보") },
             sender = "MGKH",
-            buildMessage = buildMessage@{ _, _ -> "##[네이버 인증]" }
+            buildMessage = buildMessage@{ _, _ -> "[네이버 인증]" }
         ),
 
         // 우리은행 입금
@@ -120,7 +120,7 @@ object Rules {
                     AppLogger.log("[우리은행] 입금 정보 파싱 실패")
                     return@buildMessage null
                 }
-                "##[입금] ${match.groupValues[1].trim()} ${match.groupValues[2].trim()}"
+                "[입금] ${match.groupValues[1].trim()} ${match.groupValues[2].trim()}"
             }
         ),
 
@@ -146,7 +146,7 @@ object Rules {
                     return@buildMessage null
                 }
                 
-                "##[카카오 예약 또는 취소] ${dateTimeMatch.value} ${nameMatch.groupValues[1].trim()}"
+                "[카카오 예약 또는 취소] ${dateTimeMatch.value} ${nameMatch.groupValues[1].trim()}"
             }
         ),
 
@@ -186,9 +186,9 @@ object Rules {
 
                 // 7221 카드는 들여쓰기 추가
                 if (cardNumber == "7221") {
-                    "##ㅤㅤㅤㅤ[$cardNumber]\nㅤㅤㅤㅤ${amountMatch.groupValues[1]}\nㅤㅤㅤㅤ${dateTimeMatch.groupValues[1]}\nㅤㅤㅤㅤ${storeMatch.groupValues[1].trim()}"
+                    "ㅤㅤㅤㅤ[$cardNumber]\nㅤㅤㅤㅤ${amountMatch.groupValues[1]}\nㅤㅤㅤㅤ${dateTimeMatch.groupValues[1]}\nㅤㅤㅤㅤ${storeMatch.groupValues[1].trim()}"
                 } else {
-                    "##[$cardNumber]\n${amountMatch.groupValues[1]}\n${dateTimeMatch.groupValues[1]}\n${storeMatch.groupValues[1].trim()}"
+                    "[$cardNumber]\n${amountMatch.groupValues[1]}\n${dateTimeMatch.groupValues[1]}\n${storeMatch.groupValues[1].trim()}"
                 }
             }
         ),
@@ -205,7 +205,7 @@ object Rules {
                     AppLogger.log("[카카오톡 인증] 인증번호 파싱 실패")
                     return@buildMessage null
                 }
-                "##[카카오톡인증] $code"
+                "[카카오톡인증] $code"
             }
         )
     )
