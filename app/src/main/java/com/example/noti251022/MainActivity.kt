@@ -3,9 +3,14 @@ package com.example.noti251022
 import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.work.*
 import com.example.noti251022.sender.SenderList
 import com.example.noti251022.util.AppLogger
 import com.example.noti251022.util.KeyStoreUtils
+import com.example.noti251022.worker.DailySeparatorWorker
+import java.text.SimpleDateFormat
+import java.util.*
+import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity(), AppLogger.LogListener {
 
@@ -55,6 +60,9 @@ class MainActivity : AppCompatActivity(), AppLogger.LogListener {
             AppLogger.clearLogs()
             logTextView.text = "로그가 여기에 표시됩니다..."
         }
+        
+        // 매일 0시 구분선 전송 예약
+        scheduleDailySeparator()
     }
 
     override fun onDestroy() {
@@ -140,5 +148,46 @@ class MainActivity : AppCompatActivity(), AppLogger.LogListener {
         } else {
             Toast.makeText(this, "일부 센더 정보가 누락되었습니다.", Toast.LENGTH_SHORT).show()
         }
+    }
+    
+    private fun scheduleDailySeparator() {
+        // 현재 시간
+        val currentDate = Calendar.getInstance()
+        
+        // 다음 0시 계산
+        val dueDate = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+            
+            // 이미 오늘 0시가 지났다면 내일 0시로 설정
+            if (before(currentDate)) {
+                add(Calendar.DATE, 1)
+            }
+        }
+        
+        // 지금부터 다음 0시까지의 시간 계산
+        val timeDiff = dueDate.timeInMillis - currentDate.timeInMillis
+        
+        // 24시간마다 반복
+        val dailyWorkRequest = PeriodicWorkRequestBuilder<DailySeparatorWorker>(
+            24, TimeUnit.HOURS
+        ).setInitialDelay(timeDiff, TimeUnit.MILLISECONDS)
+        .setConstraints(
+            Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+        )
+        .build()
+        
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "DailySeparator",
+            ExistingPeriodicWorkPolicy.KEEP,  // 이미 예약되어 있으면 유지
+            dailyWorkRequest
+        )
+        
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.KOREAN)
+        AppLogger.log("[일일구분선] 예약 완료 - 다음 실행: ${dateFormat.format(dueDate.time)}")
     }
 }
