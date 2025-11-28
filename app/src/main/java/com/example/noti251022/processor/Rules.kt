@@ -153,12 +153,12 @@ object Rules {
         // 신한카드 (6585, 7221 승인 및 취소 통합 처리)
         "com.shcard.smartpay" to Rule(
             source = "com.shcard.smartpay",
-            condition = { title, text -> 
+            condition = { _, text -> 
                 (text.contains("6585") || text.contains("7221")) &&
-                (title.contains("승인") || title.contains("취소"))
+                (text.contains("승인]") || text.contains("승인 취소]"))
             },
             sender = "MJCard",
-            buildMessage = buildMessage@{ title, text ->
+            buildMessage = buildMessage@{ _, text ->
                 // 카드 번호 확인
                 val cardNumber = when {
                     text.contains("6585") -> "6585"
@@ -169,14 +169,14 @@ object Rules {
                     }
                 }
 
-                // 승인인지 취소인지 확인
-                val isCancellation = title.contains("취소")
+                // 승인인지 취소인지 확인 (text에서 확인)
+                val isCancellation = text.contains("승인 취소]")
 
                 // 금액 추출 (승인금액 또는 취소금액)
                 val amountPattern = if (isCancellation) {
-                    Regex("""취소금액: ([\d,]+원)""")
+                    Regex("""취소금액:\s*([\d,]+원)""")
                 } else {
-                    Regex("""승인금액: ([\d,]+원)""")
+                    Regex("""승인금액:\s*([\d,]+원)""")
                 }
                 val amountMatch = amountPattern.find(text)
                 if (amountMatch == null) {
@@ -187,9 +187,9 @@ object Rules {
 
                 // 일시 추출 (승인일시 또는 취소일시)
                 val datetimePattern = if (isCancellation) {
-                    Regex("""취소일시: ([\d/ ]+:\d{2})""")
+                    Regex("""취소일시:\s*([\d/ ]+:\d{2})""")
                 } else {
-                    Regex("""승인일시: ([\d/ ]+:\d{2})""")
+                    Regex("""승인일시:\s*([\d/ ]+:\d{2})""")
                 }
                 val dateTimeMatch = datetimePattern.find(text)
                 if (dateTimeMatch == null) {
@@ -199,7 +199,7 @@ object Rules {
                 val datetime = dateTimeMatch.groupValues[1]
 
                 // 가맹점명 추출
-                val storeMatch = Regex("""가맹점명: ([^\[]+)""").find(text)
+                val storeMatch = Regex("""가맹점명:\s*([^\[]+)""").find(text)
                 if (storeMatch == null) {
                     AppLogger.log("[신한카드 $cardNumber] 가맹점명 파싱 실패")
                     return@buildMessage null
