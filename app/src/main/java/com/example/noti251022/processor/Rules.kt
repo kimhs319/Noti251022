@@ -150,12 +150,15 @@ object Rules {
             }
         ),
 
-        // 신한카드 (6585, 7221 통합 처리)
+        // 신한카드 (6585, 7221 승인 및 취소 통합 처리)
         "com.shcard.smartpay" to Rule(
             source = "com.shcard.smartpay",
-            condition = { _, text -> text.contains("6585") || text.contains("7221") },
+            condition = { title, text -> 
+                (text.contains("6585") || text.contains("7221")) &&
+                (title.contains("승인") || title.contains("취소"))
+            },
             sender = "MJCard",
-            buildMessage = buildMessage@{ _, text ->
+            buildMessage = buildMessage@{ title, text ->
                 // 카드 번호 확인
                 val cardNumber = when {
                     text.contains("6585") -> "6585"
@@ -166,29 +169,55 @@ object Rules {
                     }
                 }
 
-                val amountMatch = Regex("""승인금액: ([\d,]+원)""").find(text)
+                // 승인인지 취소인지 확인
+                val isCancellation = title.contains("취소")
+
+                // 금액 추출 (승인금액 또는 취소금액)
+                val amountPattern = if (isCancellation) {
+                    Regex("""취소금액: ([\d,]+원)""")
+                } else {
+                    Regex("""승인금액: ([\d,]+원)""")
+                }
+                val amountMatch = amountPattern.find(text)
                 if (amountMatch == null) {
-                    AppLogger.log("[신한카드 $cardNumber] 승인금액 파싱 실패")
+                    AppLogger.log("[신한카드 $cardNumber] 금액 파싱 실패")
                     return@buildMessage null
                 }
+                val amount = amountMatch.groupValues[1]
 
-                val dateTimeMatch = Regex("""승인일시: ([\d/ ]+:\d{2})""").find(text)
+                // 일시 추출 (승인일시 또는 취소일시)
+                val datetimePattern = if (isCancellation) {
+                    Regex("""취소일시: ([\d/ ]+:\d{2})""")
+                } else {
+                    Regex("""승인일시: ([\d/ ]+:\d{2})""")
+                }
+                val dateTimeMatch = datetimePattern.find(text)
                 if (dateTimeMatch == null) {
-                    AppLogger.log("[신한카드 $cardNumber] 승인일시 파싱 실패")
+                    AppLogger.log("[신한카드 $cardNumber] 일시 파싱 실패")
                     return@buildMessage null
                 }
+                val datetime = dateTimeMatch.groupValues[1]
 
+                // 가맹점명 추출
                 val storeMatch = Regex("""가맹점명: ([^\[]+)""").find(text)
                 if (storeMatch == null) {
                     AppLogger.log("[신한카드 $cardNumber] 가맹점명 파싱 실패")
                     return@buildMessage null
                 }
+                val storeName = storeMatch.groupValues[1].trim()
 
-                // 7221 카드는 들여쓰기 추가
-                if (cardNumber == "7221") {
-                    "ㅤㅤㅤㅤ[$cardNumber]\nㅤㅤㅤㅤ${amountMatch.groupValues[1]}\nㅤㅤㅤㅤ${dateTimeMatch.groupValues[1]}\nㅤㅤㅤㅤ${storeMatch.groupValues[1].trim()}"
+                // 승인과 취소를 구분해서 데이터 반환
+                if (isCancellation) {
+                    // 취소: CANCEL|카드번호|금액|일시|가맹점
+                    "CANCEL|$cardNumber|$amount|$datetime|$storeName"
                 } else {
-                    "[$cardNumber]\n${amountMatch.groupValues[1]}\n${dateTimeMatch.groupValues[1]}\n${storeMatch.groupValues[1].trim()}"
+                    // 승인: APPROVE|카드번호|메시지|금액|일시|가맹점
+                    // 7221 카드는 들여쓰기 추가
+                    if (cardNumber == "7221") {
+                        "APPROVE|$cardNumber|ㅤㅤㅤㅤ[$cardNumber]\nㅤㅤㅤㅤ$amount\nㅤㅤㅤㅤ$datetime\nㅤㅤㅤㅤ$storeName|$amount|$datetime|$storeName"
+                    } else {
+                        "APPROVE|$cardNumber|[$cardNumber]\n$amount\n$datetime\n$storeName|$amount|$datetime|$storeName"
+                    }
                 }
             }
         ),
