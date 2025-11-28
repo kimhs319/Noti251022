@@ -5,9 +5,14 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [FailedMessage::class], version = 1, exportSchema = false)
+@Database(
+    entities = [FailedMessage::class, CardTransaction::class], 
+    version = 2,
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun failedMessageDao(): FailedMessageDao
+    abstract fun cardTransactionDao(): CardTransactionDao
 
     companion object {
         @Volatile
@@ -19,7 +24,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "noti_database"
-                ).build()
+                )
+                .fallbackToDestructiveMigration()
+                .build()
                 INSTANCE = instance
                 instance
             }
