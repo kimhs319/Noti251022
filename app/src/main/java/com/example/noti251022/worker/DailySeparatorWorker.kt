@@ -32,7 +32,8 @@ class DailySeparatorWorker(
             // 날짜 정보 추가
             val dateFormat = SimpleDateFormat("yyyy-MM-dd (E)", Locale.KOREAN)
             val today = dateFormat.format(Date())
-            val message = "##=================\n$today"
+            val message = "================================"
+            //val message = "==========================\n$today"
             
             TelegramSender.sendTelegram(applicationContext, sender, message)
             AppLogger.log("[일일구분선] 전송 완료: $today")

@@ -8,16 +8,16 @@ import com.example.noti251022.util.AppLogger
 
 object MessageProcessor {
     fun handleNotification(context: Context, msg: MessageData) {
-        AppLogger.log("[수신] ${msg.source}: ${msg.title}")
+        //AppLogger.log("[수신] ${msg.source}: ${msg.title}")
 
         val rule = Rules.rulesMap[msg.source]
         if (rule == null) {
-            AppLogger.log("[무시] 룰 없음: ${msg.source}")
+            //AppLogger.log("[무시] 룰 없음: ${msg.source}")
             return
         }
 
         if (!rule.condition(msg.title, msg.text)) {
-            AppLogger.log("[무시] 조건 불만족: ${msg.source}")
+            //AppLogger.log("[무시] 조건 불만족: ${msg.source}")
             return
         }
 
