@@ -222,6 +222,35 @@ object Rules {
             }
         ),
 
+        // 스마일페이
+        "com.mysmilepay.app" to Rule(
+            source = "com.mysmilepay.app",
+            condition = { _, text -> 
+                text.contains("[스마일페이] 결제가 완료되었습니다.") && 
+                text.contains("신한카드")
+            },
+            sender = "MJCard",
+            buildMessage = buildMessage@{ _, text ->
+                // 상점명 추출
+                val storeMatch = Regex("""▶\s*상점\s*:\s*([^\n▶]+)""").find(text)
+                if (storeMatch == null) {
+                    AppLogger.log("[스마일페이] 상점명 파싱 실패")
+                    return@buildMessage null
+                }
+                val storeName = storeMatch.groupValues[1].trim()
+
+                // 결제금액 추출
+                val amountMatch = Regex("""▶\s*결제금액\s*:\s*(\d{1,3}(?:,\d{3})*원)""").find(text)
+                if (amountMatch == null) {
+                    AppLogger.log("[스마일페이] 결제금액 파싱 실패")
+                    return@buildMessage null
+                }
+                val amount = amountMatch.groupValues[1]
+
+                "[스마일페이] $storeName $amount"
+            }
+        ),
+
         // Samsung 메시지 - 카카오톡 인증
         "com.samsung.android.messaging" to Rule(
             source = "com.samsung.android.messaging",
