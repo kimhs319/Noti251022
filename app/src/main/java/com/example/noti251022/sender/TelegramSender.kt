@@ -17,6 +17,7 @@ import java.net.URL
 import java.util.concurrent.TimeUnit
 
 object TelegramSender {
+    private const val TAG = "TgSender"
     
     // 일반 메시지 전송
     fun sendTelegram(context: Context, sender: Sender, message: String) {
@@ -24,7 +25,7 @@ object TelegramSender {
         val chatId = sender.chatId
         
         if (token.isNullOrEmpty() || chatId.isNullOrEmpty()) {
-            AppLogger.error("[텔레그램] 센더 정보 없음: ${sender.name}")
+            AppLogger.error("[$TAG] 센더 정보 없음: ${sender.name}")
             return
         }
 
@@ -33,16 +34,16 @@ object TelegramSender {
                 val result = sendMessage(token, chatId, message)
                 
                 if (result != null) {
-                    AppLogger.log("[텔레그램] 전송 성공: ${sender.name}, msgId=${result.messageId}")
+                    AppLogger.log("[$TAG] 전송 성공: ${sender.name}, msgId=${result.messageId}")
                 } else {
                     saveFailedMessage(context, sender.name, message)
                     scheduleRetryWorker(context, sender.name, message)
-                    AppLogger.error("[텔레그램] 전송 실패, WorkManager 재시도 예약: ${sender.name}")
+                    AppLogger.error("[$TAG] 전송 실패, 재시도 예약: ${sender.name}")
                 }
             } catch (e: Exception) {
                 saveFailedMessage(context, sender.name, message)
                 scheduleRetryWorker(context, sender.name, message)
-                AppLogger.error("[텔레그램] 예외 발생: ${e.message}")
+                AppLogger.error("[$TAG] 예외 발생: ${e.message}")
             }
         }
     }
@@ -61,7 +62,7 @@ object TelegramSender {
         val chatId = sender.chatId
         
         if (token.isNullOrEmpty() || chatId.isNullOrEmpty()) {
-            AppLogger.error("[텔레그램] 센더 정보 없음: ${sender.name}")
+            AppLogger.error("[$TAG] 센더 정보 없음: ${sender.name}")
             return
         }
 
@@ -75,16 +76,14 @@ object TelegramSender {
                         context, cardNumber, amount, datetime, storeName,
                         result.messageId, result.chatId
                     )
-                    AppLogger.log("[카드거래] 저장 완료: $cardNumber $amount $storeName")
+                    AppLogger.log("[$TAG] 카드거래 저장 완료: $cardNumber $amount $storeName")
                 } else {
-                    // ✅ 수정: 실패 시 재시도 로직 추가
-                    AppLogger.error("[카드거래] 전송 실패, 재시도 예약")
+                    AppLogger.error("[$TAG] 카드거래 전송 실패, 재시도 예약")
                     saveFailedMessage(context, sender.name, message)
                     scheduleRetryWorker(context, sender.name, message)
                 }
             } catch (e: Exception) {
-                // ✅ 수정: 예외 발생 시에도 재시도
-                AppLogger.error("[카드거래] 예외 발생: ${e.message}, 재시도 예약")
+                AppLogger.error("[$TAG] 카드거래 예외 발생: ${e.message}, 재시도 예약")
                 saveFailedMessage(context, sender.name, message)
                 scheduleRetryWorker(context, sender.name, message)
             }
@@ -104,7 +103,7 @@ object TelegramSender {
         val chatId = sender.chatId
         
         if (token.isNullOrEmpty() || chatId.isNullOrEmpty()) {
-            AppLogger.error("[텔레그램] 센더 정보 없음: ${sender.name}")
+            AppLogger.error("[$TAG] 센더 정보 없음: ${sender.name}")
             return
         }
 
@@ -135,26 +134,23 @@ object TelegramSender {
                     
                     if (success) {
                         db.cardTransactionDao().markAsCancelled(originalTransaction.id)
-                        AppLogger.log("[카드취소] 원본 메시지 수정 완료: $storeName (msgId=${originalTransaction.messageId})")
+                        AppLogger.log("[$TAG] 카드취소 - 원본 메시지 수정 완료: $storeName (msgId=${originalTransaction.messageId})")
                     } else {
-                        // ✅ 수정: 메시지 수정 실패 시 새 메시지로 전송
-                        AppLogger.error("[카드취소] 메시지 수정 실패, 새 메시지로 전송")
+                        AppLogger.error("[$TAG] 카드취소 - 메시지 수정 실패, 새 메시지로 전송")
                         sendCancellationAsNewMessage(context, sender, cardNumber, amount, cancelDatetime, storeName)
                     }
                 } else {
-                    // 원본을 찾지 못한 경우 새 메시지로 전송
-                    AppLogger.log("[카드취소] 원본 없음, 새 메시지 전송: $storeName")
+                    AppLogger.log("[$TAG] 카드취소 - 원본 없음, 새 메시지 전송: $storeName")
                     sendCancellationAsNewMessage(context, sender, cardNumber, amount, cancelDatetime, storeName)
                 }
             } catch (e: Exception) {
-                // ✅ 수정: 예외 발생 시에도 새 메시지로 시도
-                AppLogger.error("[카드취소] 예외 발생: ${e.message}, 새 메시지로 전송")
+                AppLogger.error("[$TAG] 카드취소 - 예외 발생: ${e.message}, 새 메시지로 전송")
                 sendCancellationAsNewMessage(context, sender, cardNumber, amount, cancelDatetime, storeName)
             }
         }
     }
 
-    // ✅ 추가: 취소 메시지를 새로 전송하는 헬퍼 함수
+    // 취소 메시지를 새로 전송하는 헬퍼 함수
     private fun sendCancellationAsNewMessage(
         context: Context,
         sender: Sender,
@@ -193,7 +189,7 @@ object TelegramSender {
                 conn.inputStream.bufferedReader().use { it.readText() }
             } else {
                 val errorMsg = conn.errorStream?.bufferedReader()?.use { it.readText() } ?: "Unknown"
-                AppLogger.error("[HTTP] $responseCode: $errorMsg")
+                AppLogger.error("[$TAG] HTTP $responseCode: $errorMsg")
                 conn.disconnect()
                 return null
             }
@@ -206,7 +202,7 @@ object TelegramSender {
             
             SendResult(messageId, chatId)
         } catch (e: Exception) {
-            AppLogger.error("[네트워크] ${e.message}")
+            AppLogger.error("[$TAG] 네트워크 오류: ${e.message}")
             null
         }
     }
@@ -234,13 +230,13 @@ object TelegramSender {
             val responseCode = conn.responseCode
             if (responseCode != 200) {
                 val errorMsg = conn.errorStream?.bufferedReader()?.use { it.readText() } ?: "Unknown"
-                AppLogger.error("[메시지수정] $responseCode: $errorMsg")
+                AppLogger.error("[$TAG] 메시지 수정 실패 $responseCode: $errorMsg")
             }
             conn.disconnect()
             
             responseCode == 200
         } catch (e: Exception) {
-            AppLogger.error("[메시지수정] ${e.message}")
+            AppLogger.error("[$TAG] 메시지 수정 예외: ${e.message}")
             false
         }
     }
@@ -291,7 +287,7 @@ object TelegramSender {
             val cutoffTime = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
             db.cardTransactionDao().deleteOldTransactions(cutoffTime)
         } catch (e: Exception) {
-            AppLogger.error("[DB] 카드거래 저장 실패: ${e.message}")
+            AppLogger.error("[$TAG] DB 저장 실패: ${e.message}")
         }
     }
 
@@ -303,9 +299,9 @@ object TelegramSender {
                 message = message
             )
             db.failedMessageDao().insert(failedMessage)
-            AppLogger.log("[DB] 실패 메시지 저장 완료")
+            AppLogger.log("[$TAG] 실패 메시지 DB 저장 완료")
         } catch (e: Exception) {
-            AppLogger.error("[DB] 저장 실패: ${e.message}")
+            AppLogger.error("[$TAG] 실패 메시지 DB 저장 실패: ${e.message}")
         }
     }
 
@@ -330,6 +326,6 @@ object TelegramSender {
             .build()
         
         WorkManager.getInstance(context).enqueue(retryRequest)
-        AppLogger.log("[WorkManager] 재시도 작업 예약 (10초 backoff)")
+        AppLogger.log("[$TAG] WorkManager 재시도 예약 (10초 backoff)")
     }
 }
