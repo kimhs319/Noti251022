@@ -4,6 +4,7 @@ import com.example.noti251022.model.Rule
 import com.example.noti251022.util.AppLogger
 
 object Rules {
+    private const val TAG = "Rules"
 
     val rulesMap: Map<String, Rule> = mapOf(
 
@@ -13,12 +14,12 @@ object Rules {
             condition = { _, _ -> true },
             sender = "MGKH",
             buildMessage = buildMessage@{ _, text ->
-                AppLogger.log("[네이버예약] $text 입력확인")
+                AppLogger.log("[$TAG-네이버예약] 입력확인")
 
                 val dateTimeMatch = Regex("""\d{4}\.\d{2}\.\d{2}\.\([가-힣]\)\s+(오전|오후)\s+\d{1,2}:\d{2}""")
                 val dateTime = dateTimeMatch.find(text)?.value
                 if (dateTime == null) {
-                    AppLogger.log("네이버예약 dateTime null")
+                    AppLogger.log("[$TAG-네이버예약] dateTime null")
                     return@buildMessage null
                 }
 
@@ -29,7 +30,7 @@ object Rules {
                     text.contains("확정") -> "[예약]"
                     text.contains("취소") -> "[취소]"
                     else -> {
-                        AppLogger.log("[네이버] 예약 관련 아님")
+                        AppLogger.log("[$TAG-네이버예약] 예약 관련 아님")
                         return@buildMessage null
                     }
                 }
@@ -93,7 +94,7 @@ object Rules {
             buildMessage = buildMessage@{ title, _ ->
                 val paymentMatch = Regex("""\d{1,3}(?:,\d{3})*원""").find(title)
                 if (paymentMatch == null) {
-                    AppLogger.log("[제로페이] 금액 파싱 실패")
+                    AppLogger.log("[$TAG-제로페이] 금액 파싱 실패")
                     return@buildMessage null
                 }
                 "[제로페이] ${paymentMatch.value}"
@@ -117,7 +118,7 @@ object Rules {
                 val match = Regex("""^\[입금\]\s*([가-힣a-zA-Z\s]+?)\s+(\d{1,3}(?:,\d{3})*원)""")
                     .find(text)
                 if (match == null) {
-                    AppLogger.log("[우리은행] 입금 정보 파싱 실패")
+                    AppLogger.log("[$TAG-우리은행] 입금 정보 파싱 실패")
                     return@buildMessage null
                 }
                 "[입금] ${match.groupValues[1].trim()} ${match.groupValues[2].trim()}"
@@ -135,14 +136,14 @@ object Rules {
                 val dateTimeMatch = Regex("""\d{4}\.\d{2}\.\d{2}\(.+\) \d{2}:\d{2}""")
                     .find(text)
                 if (dateTimeMatch == null) {
-                    AppLogger.log("[카카오 예약] 날짜/시간 파싱 실패")
+                    AppLogger.log("[$TAG-카카오예약] 날짜/시간 파싱 실패")
                     return@buildMessage null
                 }
                 
                 val nameMatch = Regex("""예약자명\s*:\s*([^\n\r]+)""")
                     .find(text)
                 if (nameMatch == null) {
-                    AppLogger.log("[카카오 예약] 예약자명 파싱 실패")
+                    AppLogger.log("[$TAG-카카오예약] 예약자명 파싱 실패")
                     return@buildMessage null
                 }
                 
@@ -164,7 +165,7 @@ object Rules {
                     text.contains("6585") -> "6585"
                     text.contains("7221") -> "7221"
                     else -> {
-                        AppLogger.log("[신한카드] 카드번호 찾을 수 없음")
+                        AppLogger.log("[$TAG-신한카드] 카드번호 찾을 수 없음")
                         return@buildMessage null
                     }
                 }
@@ -180,7 +181,7 @@ object Rules {
                 }
                 val amountMatch = amountPattern.find(text)
                 if (amountMatch == null) {
-                    AppLogger.log("[신한카드 $cardNumber] 금액 파싱 실패")
+                    AppLogger.log("[$TAG-신한카드] $cardNumber 금액 파싱 실패")
                     return@buildMessage null
                 }
                 val amount = amountMatch.groupValues[1]
@@ -193,7 +194,7 @@ object Rules {
                 }
                 val dateTimeMatch = datetimePattern.find(text)
                 if (dateTimeMatch == null) {
-                    AppLogger.log("[신한카드 $cardNumber] 일시 파싱 실패")
+                    AppLogger.log("[$TAG-신한카드] $cardNumber 일시 파싱 실패")
                     return@buildMessage null
                 }
                 val datetime = dateTimeMatch.groupValues[1]
@@ -201,7 +202,7 @@ object Rules {
                 // 가맹점명 추출
                 val storeMatch = Regex("""가맹점명:\s*([^\[]+)""").find(text)
                 if (storeMatch == null) {
-                    AppLogger.log("[신한카드 $cardNumber] 가맹점명 파싱 실패")
+                    AppLogger.log("[$TAG-신한카드] $cardNumber 가맹점명 파싱 실패")
                     return@buildMessage null
                 }
                 val storeName = storeMatch.groupValues[1].trim()
@@ -234,7 +235,7 @@ object Rules {
                 // 상점명 추출
                 val storeMatch = Regex("""▶\s*상점\s*:\s*([^\n▶]+)""").find(text)
                 if (storeMatch == null) {
-                    AppLogger.log("[스마일페이] 상점명 파싱 실패")
+                    AppLogger.log("[$TAG-스마일페이] 상점명 파싱 실패")
                     return@buildMessage null
                 }
                 val storeName = storeMatch.groupValues[1].trim()
@@ -242,7 +243,7 @@ object Rules {
                 // 결제금액 추출
                 val amountMatch = Regex("""▶\s*결제금액\s*:\s*(\d{1,3}(?:,\d{3})*원)""").find(text)
                 if (amountMatch == null) {
-                    AppLogger.log("[스마일페이] 결제금액 파싱 실패")
+                    AppLogger.log("[$TAG-스마일페이] 결제금액 파싱 실패")
                     return@buildMessage null
                 }
                 val amount = amountMatch.groupValues[1]
@@ -260,7 +261,7 @@ object Rules {
                 val regex = """\b\d{6}\b""".toRegex()
                 val code = regex.find(text)?.value
                 if (code == null) {
-                    AppLogger.log("[카카오톡 인증] 인증번호 파싱 실패")
+                    AppLogger.log("[$TAG-카톡인증] 인증번호 파싱 실패")
                     return@buildMessage null
                 }
                 "[카카오톡인증] $code"
