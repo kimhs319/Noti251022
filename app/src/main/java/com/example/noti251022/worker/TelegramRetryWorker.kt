@@ -14,16 +14,18 @@ class TelegramRetryWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
+    private val TAG = "RetryWorker"
+
     override suspend fun doWork(): Result {
         val senderName = inputData.getString("senderName") ?: return Result.failure()
         val message = inputData.getString("message") ?: return Result.failure()
         
-        AppLogger.log("[재시도] 시작 (${runAttemptCount + 1}회): $senderName")
+        AppLogger.log("[$TAG] [재시도] 시작 (${runAttemptCount + 1}회): $senderName")
         
         return try {
             val sender = SenderList.getSender(senderName)
             if (sender?.token == null || sender.chatId == null) {
-                AppLogger.error("[재시도] 센더 정보 없음: $senderName")
+                AppLogger.error("[$TAG] [재시도] 센더 정보 없음: $senderName")
                 return Result.failure()
             }
             
@@ -32,22 +34,22 @@ class TelegramRetryWorker(
             if (success) {
                 // 성공 시 DB에서 삭제
                 deleteFromDatabase(senderName, message)
-                AppLogger.log("[재시도성공] $senderName (${runAttemptCount + 1}회 시도)")
+                AppLogger.log("[$TAG] [재시도성공] $senderName (${runAttemptCount + 1}회 시도)")
                 Result.success()
             } else {
                 // 실패 시 재시도 (최대 10회)
                 if (runAttemptCount < 9) {
-                    AppLogger.error("[재시도실패] $senderName (${runAttemptCount + 1}/10)")
+                    AppLogger.error("[$TAG] [재시도실패] $senderName (${runAttemptCount + 1}/10)")
                     Result.retry()  // BackoffPolicy에 따라 재시도
                 } else {
                     // 10회 실패 시 포기
                     deleteFromDatabase(senderName, message)
-                    AppLogger.error("[포기] $senderName - 10회 실패")
+                    AppLogger.error("[$TAG] [포기] $senderName - 10회 실패")
                     Result.failure()
                 }
             }
         } catch (e: Exception) {
-            AppLogger.error("[재시도에러] ${e.message}")
+            AppLogger.error("[$TAG] [재시도에러] ${e.message}")
             if (runAttemptCount < 9) {
                 Result.retry()
             } else {
@@ -76,7 +78,7 @@ class TelegramRetryWorker(
             
             responseCode == 200
         } catch (e: Exception) {
-            AppLogger.error("[Worker네트워크] ${e.message}")
+            AppLogger.error("[$TAG] [Worker네트워크] ${e.message}")
             false
         }
     }
@@ -88,10 +90,10 @@ class TelegramRetryWorker(
             val oldestMessage = db.failedMessageDao().getOldestMessage()
             if (oldestMessage != null && oldestMessage.senderName == senderName) {
                 db.failedMessageDao().deleteById(oldestMessage.id)
-                AppLogger.log("[DB] 처리 완료 메시지 삭제")
+                AppLogger.log("[$TAG] [DB] 처리 완료 메시지 삭제")
             }
         } catch (e: Exception) {
-            AppLogger.error("[DB] 삭제 실패: ${e.message}")
+            AppLogger.error("[$TAG] [DB] 삭제 실패: ${e.message}")
         }
     }
 }
