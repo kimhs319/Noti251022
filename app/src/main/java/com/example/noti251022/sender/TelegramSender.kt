@@ -77,10 +77,16 @@ object TelegramSender {
                     )
                     AppLogger.log("[카드거래] 저장 완료: $cardNumber $amount $storeName")
                 } else {
-                    AppLogger.error("[카드거래] 전송 실패")
+                    // ✅ 수정: 실패 시 재시도 로직 추가
+                    AppLogger.error("[카드거래] 전송 실패, 재시도 예약")
+                    saveFailedMessage(context, sender.name, message)
+                    scheduleRetryWorker(context, sender.name, message)
                 }
             } catch (e: Exception) {
-                AppLogger.error("[카드거래] 예외 발생: ${e.message}")
+                // ✅ 수정: 예외 발생 시에도 재시도
+                AppLogger.error("[카드거래] 예외 발생: ${e.message}, 재시도 예약")
+                saveFailedMessage(context, sender.name, message)
+                scheduleRetryWorker(context, sender.name, message)
             }
         }
     }
@@ -131,22 +137,38 @@ object TelegramSender {
                         db.cardTransactionDao().markAsCancelled(originalTransaction.id)
                         AppLogger.log("[카드취소] 원본 메시지 수정 완료: $storeName (msgId=${originalTransaction.messageId})")
                     } else {
-                        AppLogger.error("[카드취소] 메시지 수정 실패")
+                        // ✅ 수정: 메시지 수정 실패 시 새 메시지로 전송
+                        AppLogger.error("[카드취소] 메시지 수정 실패, 새 메시지로 전송")
+                        sendCancellationAsNewMessage(context, sender, cardNumber, amount, cancelDatetime, storeName)
                     }
                 } else {
                     // 원본을 찾지 못한 경우 새 메시지로 전송
-                    val cancellationMessage = if (cardNumber == "7221") {
-                        "ㅤㅤㅤㅤ[$cardNumber] 취소\nㅤㅤㅤㅤ$amount\nㅤㅤㅤㅤ$cancelDatetime\nㅤㅤㅤㅤ$storeName"
-                    } else {
-                        "[$cardNumber] 취소\n$amount\n$cancelDatetime\n$storeName"
-                    }
-                    sendTelegram(context, sender, cancellationMessage)
-                    AppLogger.log("[카드취소] 원본 없음, 새 메시지 전송")
+                    AppLogger.log("[카드취소] 원본 없음, 새 메시지 전송: $storeName")
+                    sendCancellationAsNewMessage(context, sender, cardNumber, amount, cancelDatetime, storeName)
                 }
             } catch (e: Exception) {
-                AppLogger.error("[카드취소] 예외 발생: ${e.message}")
+                // ✅ 수정: 예외 발생 시에도 새 메시지로 시도
+                AppLogger.error("[카드취소] 예외 발생: ${e.message}, 새 메시지로 전송")
+                sendCancellationAsNewMessage(context, sender, cardNumber, amount, cancelDatetime, storeName)
             }
         }
+    }
+
+    // ✅ 추가: 취소 메시지를 새로 전송하는 헬퍼 함수
+    private fun sendCancellationAsNewMessage(
+        context: Context,
+        sender: Sender,
+        cardNumber: String,
+        amount: String,
+        cancelDatetime: String,
+        storeName: String
+    ) {
+        val cancellationMessage = if (cardNumber == "7221") {
+            "ㅤㅤㅤㅤ[$cardNumber] 취소\nㅤㅤㅤㅤ$amount\nㅤㅤㅤㅤ$cancelDatetime\nㅤㅤㅤㅤ$storeName"
+        } else {
+            "[$cardNumber] 취소\n$amount\n$cancelDatetime\n$storeName"
+        }
+        sendTelegram(context, sender, cancellationMessage)
     }
 
     // 메시지 전송 결과 (messageId 포함)
