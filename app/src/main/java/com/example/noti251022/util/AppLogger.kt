@@ -24,7 +24,7 @@ object AppLogger {
     
     fun log(message: String) {
         Log.d(TAG, message)
-        addLog("DEBUG", message)
+        addLog("d", message)
     }
 
     fun error(message: String, throwable: Throwable? = null) {
