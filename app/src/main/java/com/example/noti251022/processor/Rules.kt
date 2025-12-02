@@ -226,12 +226,16 @@ object Rules {
         // 스마일페이
         "com.mysmilepay.app" to Rule(
             source = "com.mysmilepay.app",
-            condition = { _, text -> 
-                text.contains("[스마일페이] 결제가 완료되었습니다.") && 
+            condition = { title, text -> 
+                // 조건 완화: title이 "스마일페이"이고, text에 "결제가 완료"와 "신한카드"가 있으면 OK
+                title.contains("스마일페이") && 
+                text.contains("결제가 완료") &&
                 text.contains("신한카드")
             },
             sender = "MJCard",
             buildMessage = buildMessage@{ _, text ->
+                AppLogger.log("[$TAG-스마일페이] 파싱 시작")
+                
                 // 상점명 추출
                 val storeMatch = Regex("""▶\s*상점\s*:\s*([^\n▶]+)""").find(text)
                 if (storeMatch == null) {
