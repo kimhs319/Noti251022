@@ -1,5 +1,8 @@
 package com.example.noti251022
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
@@ -19,6 +22,7 @@ class MainActivity : AppCompatActivity(), AppLogger.LogListener {
     private lateinit var saveButton: Button
     private lateinit var logTextView: TextView
     private lateinit var clearLogButton: Button
+    private lateinit var copyLogButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,6 +33,7 @@ class MainActivity : AppCompatActivity(), AppLogger.LogListener {
         saveButton = findViewById(R.id.saveButton)
         logTextView = findViewById(R.id.logTextView)
         clearLogButton = findViewById(R.id.clearLogButton)
+        copyLogButton = findViewById(R.id.copyLogButton)
 
         // 로그 리스너 등록
         AppLogger.registerListener(this)
@@ -59,6 +64,12 @@ class MainActivity : AppCompatActivity(), AppLogger.LogListener {
         clearLogButton.setOnClickListener {
             AppLogger.clearLogs()
             logTextView.text = "로그가 여기에 표시됩니다..."
+            Toast.makeText(this, "로그를 삭제했습니다", Toast.LENGTH_SHORT).show()
+        }
+        
+        // 로그 복사 버튼
+        copyLogButton.setOnClickListener {
+            copyLogsToClipboard()
         }
         
         // 매일 0시 구분선 전송 예약
@@ -93,6 +104,25 @@ class MainActivity : AppCompatActivity(), AppLogger.LogListener {
                 "[${it.timestamp}] ${it.level}: ${it.message}" 
             }
         }
+    }
+    
+    private fun copyLogsToClipboard() {
+        val logs = AppLogger.getAllLogs()
+        
+        if (logs.isEmpty()) {
+            Toast.makeText(this, "복사할 로그가 없습니다", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        val logText = logs.joinToString("\n") { 
+            "[${it.timestamp}] ${it.level}: ${it.message}" 
+        }
+        
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("앱 로그", logText)
+        clipboard.setPrimaryClip(clip)
+        
+        Toast.makeText(this, "로그를 클립보드에 복사했습니다 (${logs.size}개)", Toast.LENGTH_SHORT).show()
     }
 
     private fun createSenderInputFields() {
