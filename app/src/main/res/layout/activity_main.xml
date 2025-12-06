@@ -78,7 +78,14 @@
                 android:id="@+id/clearLogButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="로그 지우기"
+                android:text="지우기"
+                style="?android:attr/buttonBarButtonStyle" />
+            
+            <Button
+                android:id="@+id/copyLogButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="복사"
                 style="?android:attr/buttonBarButtonStyle" />
         </LinearLayout>
 
