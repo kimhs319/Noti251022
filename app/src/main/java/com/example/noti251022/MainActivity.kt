@@ -6,11 +6,13 @@ import android.content.Context
 import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SwitchCompat
 import androidx.work.*
 import com.example.noti251022.sender.SenderList
 import com.example.noti251022.util.AppLogger
 import com.example.noti251022.util.KeyStoreUtils
 import com.example.noti251022.worker.DailySeparatorWorker
+import com.example.noti251022.worker.WaterHeaterReminderWorker
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -23,6 +25,7 @@ class MainActivity : AppCompatActivity(), AppLogger.LogListener {
     private lateinit var logTextView: TextView
     private lateinit var clearLogButton: Button
     private lateinit var copyLogButton: Button
+    private lateinit var waterHeaterSwitch: SwitchCompat
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,6 +37,7 @@ class MainActivity : AppCompatActivity(), AppLogger.LogListener {
         logTextView = findViewById(R.id.logTextView)
         clearLogButton = findViewById(R.id.clearLogButton)
         copyLogButton = findViewById(R.id.copyLogButton)
+        waterHeaterSwitch = findViewById(R.id.waterHeaterSwitch)
 
         // 로그 리스너 등록
         AppLogger.registerListener(this)
@@ -72,8 +76,14 @@ class MainActivity : AppCompatActivity(), AppLogger.LogListener {
             copyLogsToClipboard()
         }
         
+        // 온수기 알림 스위치 초기화 및 리스너
+        initWaterHeaterSwitch()
+        
         // 매일 0시 구분선 전송 예약
         scheduleDailySeparator()
+        
+        // 온수기 알림 예약
+        scheduleWaterHeaterReminder()
     }
 
     override fun onDestroy() {
@@ -180,6 +190,25 @@ class MainActivity : AppCompatActivity(), AppLogger.LogListener {
         }
     }
     
+    private fun initWaterHeaterSwitch() {
+        // SharedPreferences에서 저장된 상태 불러오기
+        val prefs = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
+        val isEnabled = prefs.getBoolean("water_heater_enabled", true)
+        waterHeaterSwitch.isChecked = isEnabled
+        
+        // 스위치 상태 변경 리스너
+        waterHeaterSwitch.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("water_heater_enabled", isChecked).apply()
+            
+            val status = if (isChecked) "활성화" else "비활성화"
+            Toast.makeText(this, "온수기 알림 $status", Toast.LENGTH_SHORT).show()
+            AppLogger.log("[온수기알림] $status")
+            
+            // 상태가 변경되면 Worker 재예약
+            scheduleWaterHeaterReminder()
+        }
+    }
+    
     private fun scheduleDailySeparator() {
         // 현재 시간
         val currentDate = Calendar.getInstance()
@@ -219,5 +248,111 @@ class MainActivity : AppCompatActivity(), AppLogger.LogListener {
         
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.KOREAN)
         AppLogger.log("[일일구분선] 예약 완료 - 다음 실행: ${dateFormat.format(dueDate.time)}")
+    }
+    
+    private fun scheduleWaterHeaterReminder() {
+        val prefs = getSharedPreferences("AppSettings", Context.MODE_PRIVATE)
+        val isEnabled = prefs.getBoolean("water_heater_enabled", true)
+        
+        if (!isEnabled) {
+            // 비활성화 시 기존 Worker 취소
+            WorkManager.getInstance(this).cancelUniqueWork("WaterHeaterWeekday")
+            WorkManager.getInstance(this).cancelUniqueWork("WaterHeaterSaturday")
+            AppLogger.log("[온수기알림] 예약 취소됨")
+            return
+        }
+        
+        // 평일 18:00 예약
+        scheduleWeekdayReminder()
+        
+        // 토요일 12:00 예약
+        scheduleSaturdayReminder()
+    }
+    
+    private fun scheduleWeekdayReminder() {
+        val currentDate = Calendar.getInstance()
+        val targetTime = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 18)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        
+        // 오늘이 평일이고 아직 18:00 전이면 오늘, 아니면 다음 평일
+        val dayOfWeek = currentDate.get(Calendar.DAY_OF_WEEK)
+        if (dayOfWeek in Calendar.MONDAY..Calendar.FRIDAY && currentDate.before(targetTime)) {
+            // 오늘 18:00 예약
+        } else {
+            // 다음 평일 18:00로 이동
+            do {
+                targetTime.add(Calendar.DATE, 1)
+            } while (targetTime.get(Calendar.DAY_OF_WEEK) !in Calendar.MONDAY..Calendar.FRIDAY)
+        }
+        
+        val timeDiff = targetTime.timeInMillis - currentDate.timeInMillis
+        
+        // 24시간마다 반복 (평일만 실행되도록 Worker 내부에서 체크)
+        val workRequest = PeriodicWorkRequestBuilder<WaterHeaterReminderWorker>(
+            24, TimeUnit.HOURS
+        ).setInitialDelay(timeDiff, TimeUnit.MILLISECONDS)
+        .setConstraints(
+            Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+        )
+        .addTag("weekday")
+        .build()
+        
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "WaterHeaterWeekday",
+            ExistingPeriodicWorkPolicy.REPLACE,
+            workRequest
+        )
+        
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss (E)", Locale.KOREAN)
+        AppLogger.log("[온수기알림] 평일 예약 - 다음: ${dateFormat.format(targetTime.time)}")
+    }
+    
+    private fun scheduleSaturdayReminder() {
+        val currentDate = Calendar.getInstance()
+        val targetTime = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 12)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        
+        // 오늘이 토요일이고 아직 12:00 전이면 오늘, 아니면 다음 토요일
+        if (currentDate.get(Calendar.DAY_OF_WEEK) == Calendar.SATURDAY && currentDate.before(targetTime)) {
+            // 오늘 12:00 예약
+        } else {
+            // 다음 토요일로 이동
+            do {
+                targetTime.add(Calendar.DATE, 1)
+            } while (targetTime.get(Calendar.DAY_OF_WEEK) != Calendar.SATURDAY)
+        }
+        
+        val timeDiff = targetTime.timeInMillis - currentDate.timeInMillis
+        
+        // 7일마다 반복 (토요일)
+        val workRequest = PeriodicWorkRequestBuilder<WaterHeaterReminderWorker>(
+            7, TimeUnit.DAYS
+        ).setInitialDelay(timeDiff, TimeUnit.MILLISECONDS)
+        .setConstraints(
+            Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+        )
+        .addTag("saturday")
+        .build()
+        
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "WaterHeaterSaturday",
+            ExistingPeriodicWorkPolicy.REPLACE,
+            workRequest
+        )
+        
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss (E)", Locale.KOREAN)
+        AppLogger.log("[온수기알림] 토요일 예약 - 다음: ${dateFormat.format(targetTime.time)}")
     }
 }

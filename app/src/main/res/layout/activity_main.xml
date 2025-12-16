@@ -27,6 +27,51 @@
             android:background="#CCCCCC"
             android:layout_marginBottom="24dp" />
 
+        <!-- 온수기 알림 설정 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="자동 알림 설정"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+            
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="온수기 알림"
+                android:textSize="16sp" />
+            
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/waterHeaterSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true" />
+        </LinearLayout>
+        
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="평일 18:00, 토요일 12:00에 MGKH에게 알림"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:layout_marginBottom="24dp" />
+
+        <!-- 구분선 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#CCCCCC"
+            android:layout_marginBottom="24dp" />
+
         <!-- 센더 설정 제목 -->
         <TextView
             android:layout_width="match_parent"
