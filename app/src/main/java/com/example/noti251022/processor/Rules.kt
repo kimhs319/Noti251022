@@ -125,29 +125,58 @@ object Rules {
             }
         ),
 
-        // 카카오톡 예약하기
+        // 카카오톡 (예약하기 + 스마일페이 통합)
         "com.kakao.talk" to Rule(
             source = "com.kakao.talk",
             condition = { title, text -> 
-                title.contains("카카오톡 예약하기 파트너센터") && text.contains("예약자명") 
+                (title.contains("스마일페이") && text.contains("결제가 완료")) ||
+                (title.contains("카카오톡 예약하기 파트너센터") && text.contains("예약자명"))
             },
-            sender = "MGKH",
-            buildMessage = buildMessage@{ _, text ->
-                val dateTimeMatch = Regex("""\d{4}\.\d{2}\.\d{2}\(.+\) \d{2}:\d{2}""")
-                    .find(text)
-                if (dateTimeMatch == null) {
-                    AppLogger.log("[$TAG-카카오예약] 날짜/시간 파싱 실패")
-                    return@buildMessage null
+            sender = "DYNAMIC",
+            buildMessage = buildMessage@{ title, text ->
+                // 스마일페이 처리
+                if (title.contains("스마일페이") && text.contains("결제가 완료")) {
+                    AppLogger.log("[$TAG-스마일페이] 알림 수신")
+                    
+                    if (!text.contains("신한카드")) {
+                        AppLogger.log("[$TAG-스마일페이] 신한카드 아님, 무시")
+                        return@buildMessage null
+                    }
+
+                    val storeMatch = Regex("""▶\s*상점\s*:\s*([^\n▶]+)""").find(text)
+                    if (storeMatch == null) {
+                        AppLogger.log("[$TAG-스마일페이] 상점명 파싱 실패")
+                        return@buildMessage null
+                    }
+                    val storeName = storeMatch.groupValues[1].trim()
+
+                    val amountMatch = Regex("""▶\s*결제금액\s*:\s*(\d{1,3}(?:,\d{3})*원)""").find(text)
+                    if (amountMatch == null) {
+                        AppLogger.log("[$TAG-스마일페이] 결제금액 파싱 실패")
+                        return@buildMessage null
+                    }
+                    val amount = amountMatch.groupValues[1]
+
+                    "SMILEPAY|[스마일페이] $storeName $amount"
                 }
-                
-                val nameMatch = Regex("""예약자명\s*:\s*([^\n\r]+)""")
-                    .find(text)
-                if (nameMatch == null) {
-                    AppLogger.log("[$TAG-카카오예약] 예약자명 파싱 실패")
-                    return@buildMessage null
+                // 카카오톡 예약하기 처리
+                else if (title.contains("카카오톡 예약하기 파트너센터") && text.contains("예약자명")) {
+                    val dateTimeMatch = Regex("""\d{4}\.\d{2}\.\d{2}\(.+\) \d{2}:\d{2}""").find(text)
+                    if (dateTimeMatch == null) {
+                        AppLogger.log("[$TAG-카카오예약] 날짜/시간 파싱 실패")
+                        return@buildMessage null
+                    }
+                    
+                    val nameMatch = Regex("""예약자명\s*:\s*([^\n\r]+)""").find(text)
+                    if (nameMatch == null) {
+                        AppLogger.log("[$TAG-카카오예약] 예약자명 파싱 실패")
+                        return@buildMessage null
+                    }
+                    
+                    "KAKAO_RESERVE|[카카오 예약 또는 취소] ${dateTimeMatch.value} ${nameMatch.groupValues[1].trim()}"
+                } else {
+                    null
                 }
-                
-                "[카카오 예약 또는 취소] ${dateTimeMatch.value} ${nameMatch.groupValues[1].trim()}"
             }
         ),
 
@@ -160,7 +189,6 @@ object Rules {
             },
             sender = "MJCard",
             buildMessage = buildMessage@{ _, text ->
-                // 카드 번호 확인
                 val cardNumber = when {
                     text.contains("6585") -> "6585"
                     text.contains("7293") -> "7293"
@@ -170,10 +198,8 @@ object Rules {
                     }
                 }
 
-                // 승인인지 취소인지 확인 (text에서 확인)
                 val isCancellation = text.contains("승인 취소]")
 
-                // 금액 추출 (승인금액 또는 취소금액)
                 val amountPattern = if (isCancellation) {
                     Regex("""취소금액:\s*([\d,]+원)""")
                 } else {
@@ -186,7 +212,6 @@ object Rules {
                 }
                 val amount = amountMatch.groupValues[1]
 
-                // 일시 추출 (승인일시 또는 취소일시)
                 val datetimePattern = if (isCancellation) {
                     Regex("""취소일시:\s*([\d/ ]+:\d{2})""")
                 } else {
@@ -199,7 +224,6 @@ object Rules {
                 }
                 val datetime = dateTimeMatch.groupValues[1]
 
-                // 가맹점명 추출
                 val storeMatch = Regex("""가맹점명:\s*([^\[]+)""").find(text)
                 if (storeMatch == null) {
                     AppLogger.log("[$TAG-신한카드] $cardNumber 가맹점명 파싱 실패")
@@ -207,67 +231,15 @@ object Rules {
                 }
                 val storeName = storeMatch.groupValues[1].trim()
 
-                // 승인과 취소를 구분해서 데이터 반환
                 if (isCancellation) {
-                    // 취소: CANCEL|카드번호|금액|일시|가맹점
                     "CANCEL|$cardNumber|$amount|$datetime|$storeName"
                 } else {
-                    // 승인: APPROVE|카드번호|메시지|금액|일시|가맹점
-                    // 7293 카드는 들여쓰기 추가
                     if (cardNumber == "7293") {
                         "APPROVE|$cardNumber|ㅤㅤㅤㅤ[$cardNumber]\nㅤㅤㅤㅤ$amount\nㅤㅤㅤㅤ$datetime\nㅤㅤㅤㅤ$storeName|$amount|$datetime|$storeName"
                     } else {
                         "APPROVE|$cardNumber|[$cardNumber]\n$amount\n$datetime\n$storeName|$amount|$datetime|$storeName"
                     }
                 }
-            }
-        ),
-
-        // 스마일페이
-        "com.mysmilepay.app" to Rule(
-            source = "com.mysmilepay.app",
-            condition = { _, _ ->
-                // 일단 모든 알림을 통과시켜서 로그 확인
-                true
-            },
-            sender = "MJCard",
-            buildMessage = buildMessage@{ title, text ->
-                AppLogger.log("[$TAG-스마일페이] 알림 수신")
-                AppLogger.log("[$TAG-스마일페이] title: $title")
-                AppLogger.log("[$TAG-스마일페이] text 앞부분: ${text.take(200)}")
-
-                // 조건 하나씩 확인
-                val hasTitle = title.contains("스마일페이")
-                val hasComplete = text.contains("결제가 완료")
-                val hasCard = text.contains("신한카드")
-
-                AppLogger.log("[$TAG-스마일페이] title에 '스마일페이' 포함: $hasTitle")
-                AppLogger.log("[$TAG-스마일페이] text에 '결제가 완료' 포함: $hasComplete")
-                AppLogger.log("[$TAG-스마일페이] text에 '신한카드' 포함: $hasCard")
-
-                // 조건 불만족 시 null 반환
-                if (!hasTitle || !hasComplete || !hasCard) {
-                    AppLogger.log("[$TAG-스마일페이] 조건 불만족으로 무시")
-                    return@buildMessage null
-                }
-
-                // 상점명 추출
-                val storeMatch = Regex("""▶\s*상점\s*:\s*([^\n▶]+)""").find(text)
-                if (storeMatch == null) {
-                    AppLogger.log("[$TAG-스마일페이] 상점명 파싱 실패")
-                    return@buildMessage null
-                }
-                val storeName = storeMatch.groupValues[1].trim()
-
-                // 결제금액 추출
-                val amountMatch = Regex("""▶\s*결제금액\s*:\s*(\d{1,3}(?:,\d{3})*원)""").find(text)
-                if (amountMatch == null) {
-                    AppLogger.log("[$TAG-스마일페이] 결제금액 파싱 실패")
-                    return@buildMessage null
-                }
-                val amount = amountMatch.groupValues[1]
-
-                "[스마일페이] $storeName $amount"
             }
         ),
 
@@ -288,13 +260,7 @@ object Rules {
         )
     )
 
-    /**
-     * 특정 소스의 Rule 조회
-     */
     fun getRuleForSource(source: String): Rule? = rulesMap[source]
 
-    /**
-     * 모든 등록된 소스 목록 반환
-     */
     fun getAllSources(): Set<String> = rulesMap.keys
 }
