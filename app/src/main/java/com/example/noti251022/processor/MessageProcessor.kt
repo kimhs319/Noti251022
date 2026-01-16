@@ -10,16 +10,12 @@ object MessageProcessor {
     private const val TAG = "MsgProc"
     
     fun handleNotification(context: Context, msg: MessageData) {
-        //AppLogger.log("[$TAG] 수신: ${msg.source}: ${msg.title}")
-
         val rule = Rules.rulesMap[msg.source]
         if (rule == null) {
-            //AppLogger.log("[$TAG] 무시 - 룰 없음: ${msg.source}")
             return
         }
 
         if (!rule.condition(msg.title, msg.text)) {
-            //AppLogger.log("[$TAG] 무시 - 조건 불만족: ${msg.source}")
             return
         }
 
@@ -29,9 +25,15 @@ object MessageProcessor {
             return
         }
 
-        val sender = SenderList.getSender(rule.sender)
+        val actualSenderName = when {
+            messageToSend.startsWith("SMILEPAY|") -> "MJCard"
+            messageToSend.startsWith("KAKAO_RESERVE|") -> "MGKH"
+            else -> rule.sender
+        }
+
+        val sender = SenderList.getSender(actualSenderName)
         if (sender == null) {
-            AppLogger.error("[$TAG] 에러 - 센더 없음: ${rule.sender}")
+            AppLogger.error("[$TAG] 에러 - 센더 없음: $actualSenderName")
             return
         }
 
@@ -40,12 +42,21 @@ object MessageProcessor {
             return
         }
 
-        // 신한카드 승인/취소 처리
         if (msg.source == "com.shcard.smartpay" && 
             (messageToSend.startsWith("APPROVE|") || messageToSend.startsWith("CANCEL|"))) {
             handleCardTransaction(context, sender, messageToSend)
-        } else {
-            // 일반 메시지 전송
+        }
+        else if (messageToSend.startsWith("SMILEPAY|")) {
+            val actualMessage = messageToSend.removePrefix("SMILEPAY|")
+            TelegramSender.sendTelegram(context, sender, actualMessage)
+            AppLogger.log("[$TAG] 스마일페이 전송: ${sender.name}")
+        }
+        else if (messageToSend.startsWith("KAKAO_RESERVE|")) {
+            val actualMessage = messageToSend.removePrefix("KAKAO_RESERVE|")
+            TelegramSender.sendTelegram(context, sender, actualMessage)
+            AppLogger.log("[$TAG] 카카오예약 전송: ${sender.name}")
+        }
+        else {
             TelegramSender.sendTelegram(context, sender, messageToSend)
             AppLogger.log("[$TAG] 전송: ${sender.name}")
         }
