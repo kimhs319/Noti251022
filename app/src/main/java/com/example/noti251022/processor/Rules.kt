@@ -83,7 +83,7 @@ object Rules {
             source = "com.google.android.gm",
             condition = { _, text -> text.contains("Contact form submitted") },
             sender = "MGKH",
-            buildMessage = buildMessage@{ _, _ -> "[온라인 서류 발급 요청]" }
+            buildMessage = buildMessage@{ _, _ -> "[서류 발급 요청]" }
         ),
 
         // 제로페이
