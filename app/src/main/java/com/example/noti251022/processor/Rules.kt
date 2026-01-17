@@ -151,11 +151,11 @@ object Rules {
             }
         ),
 
-        // 신한카드 (6585, 7221 승인 및 취소 통합 처리)
+        // 신한카드 (6585, 7293 승인 및 취소 통합 처리)
         "com.shcard.smartpay" to Rule(
             source = "com.shcard.smartpay",
             condition = { _, text -> 
-                (text.contains("6585") || text.contains("7221")) &&
+                (text.contains("6585") || text.contains("7293")) &&
                 (text.contains("승인]") || text.contains("승인 취소]"))
             },
             sender = "MJCard",
@@ -163,7 +163,7 @@ object Rules {
                 // 카드 번호 확인
                 val cardNumber = when {
                     text.contains("6585") -> "6585"
-                    text.contains("7221") -> "7221"
+                    text.contains("7293") -> "7293"
                     else -> {
                         AppLogger.log("[$TAG-신한카드] 카드번호 찾을 수 없음")
                         return@buildMessage null
@@ -213,8 +213,8 @@ object Rules {
                     "CANCEL|$cardNumber|$amount|$datetime|$storeName"
                 } else {
                     // 승인: APPROVE|카드번호|메시지|금액|일시|가맹점
-                    // 7221 카드는 들여쓰기 추가
-                    if (cardNumber == "7221") {
+                    // 7293 카드는 들여쓰기 추가
+                    if (cardNumber == "7293") {
                         "APPROVE|$cardNumber|ㅤㅤㅤㅤ[$cardNumber]\nㅤㅤㅤㅤ$amount\nㅤㅤㅤㅤ$datetime\nㅤㅤㅤㅤ$storeName|$amount|$datetime|$storeName"
                     } else {
                         "APPROVE|$cardNumber|[$cardNumber]\n$amount\n$datetime\n$storeName|$amount|$datetime|$storeName"

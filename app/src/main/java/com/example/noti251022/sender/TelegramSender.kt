@@ -159,7 +159,7 @@ object TelegramSender {
         cancelDatetime: String,
         storeName: String
     ) {
-        val cancellationMessage = if (cardNumber == "7221") {
+        val cancellationMessage = if (cardNumber == "7293") {
             "ㅤㅤㅤㅤ[$cardNumber] 취소\nㅤㅤㅤㅤ$amount\nㅤㅤㅤㅤ$cancelDatetime\nㅤㅤㅤㅤ$storeName"
         } else {
             "[$cardNumber] 취소\n$amount\n$cancelDatetime\n$storeName"
@@ -254,7 +254,7 @@ object TelegramSender {
             return text.map { "$it\u0336" }.joinToString("")
         }
         
-        return if (cardNumber == "7221") {
+        return if (cardNumber == "7293") {
             "ㅤㅤㅤㅤ[$cardNumber]\nㅤㅤㅤㅤ${strikethrough(amount)}\nㅤㅤㅤㅤ${strikethrough(originalDatetime)}\nㅤㅤㅤㅤ${strikethrough(storeName)}\n\n취소: $cancelDatetime"
         } else {
             "[$cardNumber]\n${strikethrough(amount)}\n${strikethrough(originalDatetime)}\n${strikethrough(storeName)}\n\n취소: $cancelDatetime"

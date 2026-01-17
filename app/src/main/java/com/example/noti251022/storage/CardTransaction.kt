@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 data class CardTransaction(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val cardNumber: String,          // "6585" or "7221"
+    val cardNumber: String,          // "6585" or "7293"
     val amount: String,               // "31,999원"
     val datetime: String,             // "11/21 15:44"
     val storeName: String,            // "쿠팡"
